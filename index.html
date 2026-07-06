@@ -212,6 +212,13 @@
       <span style="font-size:16px;">📊</span> Progress
     </button>
     <div class="sidebar-spacer"></div>
+    <button class="nav-btn" onclick="exportData()" style="color:var(--text2);margin-bottom:2px;">
+      <span style="font-size:15px;">⬇️</span> Export backup
+    </button>
+    <label class="nav-btn" style="color:var(--text2);cursor:pointer;margin-bottom:8px;">
+      <span style="font-size:15px;">⬆️</span> Import backup
+      <input type="file" accept=".json" onchange="importData(event)" style="display:none;" />
+    </label>
     <button class="reset-btn" onclick="openResetModal()">↺ Reset week</button>
   </aside>
 
@@ -230,6 +237,7 @@
       <div class="xp-total">
         <div class="xp-total-num" id="total-xp">0</div>
         <div class="xp-total-lbl">total XP</div>
+        <div id="saved-badge" style="font-size:11px;color:var(--text3);margin-top:4px;">Not saved yet</div>
       </div>
     </div>
 
@@ -310,6 +318,18 @@
     <div class="modal-btns">
       <button class="modal-cancel" onclick="closeDelCatModal()">Cancel</button>
       <button class="modal-confirm" onclick="confirmDeleteCat()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT CONFIRM MODAL -->
+<div class="modal-overlay" id="import-modal">
+  <div class="modal">
+    <h3>Import backup?</h3>
+    <p id="import-modal-msg">This will replace all your current tasks, categories, and XP with the backup file. Your existing data will be overwritten.</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeImportModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmImport()" style="background:#3B6D11;">Yes, import</button>
     </div>
   </div>
 </div>
@@ -411,10 +431,27 @@ function loadState() {
     activeCat: 'all',
   };
 }
-function saveState() { localStorage.setItem('squish_state_v2', JSON.stringify(state)); }
+function saveState() {
+  state.lastSaved = Date.now();
+  localStorage.setItem('squish_state_v2', JSON.stringify(state));
+  updateSavedBadge();
+}
+
+// Recompute all XP from checked tasks — prevents drift across sessions.
+function rehydrateXp() {
+  state.totalXp = 0;
+  state.weekXp  = 0;
+  state.catXp   = {};
+  state.tasks.filter(t => t.done).forEach(t => {
+    state.totalXp += t.xp;
+    state.weekXp  += t.xp;
+    state.catXp[t.cat] = (state.catXp[t.cat] || 0) + t.xp;
+  });
+}
+
 let state = loadState();
-// ensure cats exists for old saves
 if (!state.cats) state.cats = JSON.parse(JSON.stringify(DEFAULT_CATS));
+rehydrateXp(); // always recalculate on load
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 function getCat(key) { return state.cats[key] || state.cats['other'] || { label: key, color: '#7A8099', xp: 10 }; }
@@ -480,14 +517,16 @@ function renderTaskRow(t) {
 }
 
 // ─── ADD ROW ─────────────────────────────────────────────────────────────────
+let _addRowUid = 0;
 function renderAddRow(dayIndex) {
+  const uid = _addRowUid++; // unique per render so duplicate days never share DOM ids
   const div = document.createElement('div');
   div.className = 'add-row';
   const catOptions = Object.entries(state.cats).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
   div.innerHTML = `
-    <input class="add-input" type="text" placeholder="Add a task…" id="add-input-${dayIndex}" onkeydown="if(event.key==='Enter')addTask(${dayIndex})" />
-    <select class="add-select" id="add-cat-${dayIndex}">${catOptions}</select>
-    <button class="add-btn" onclick="addTask(${dayIndex})">+ Add</button>
+    <input class="add-input" type="text" placeholder="Add a task…" id="add-input-${uid}" onkeydown="if(event.key==='Enter')addTask(${dayIndex},'${uid}')" />
+    <select class="add-select" id="add-cat-${uid}">${catOptions}</select>
+    <button class="add-btn" onclick="addTask(${dayIndex},'${uid}')">+ Add</button>
   `;
   return div;
 }
@@ -739,9 +778,9 @@ function toggleTask(id) {
   saveState(); renderAll();
 }
 
-function addTask(dayIndex) {
-  const input  = document.getElementById(`add-input-${dayIndex}`);
-  const catSel = document.getElementById(`add-cat-${dayIndex}`);
+function addTask(dayIndex, uid) {
+  const input  = document.getElementById(`add-input-${uid}`);
+  const catSel = document.getElementById(`add-cat-${uid}`);
   const text   = input.value.trim();
   if (!text) return;
   const cat = catSel.value;
@@ -779,9 +818,83 @@ function openResetModal()  { document.getElementById('reset-modal').classList.ad
 function closeResetModal() { document.getElementById('reset-modal').classList.remove('open'); }
 function confirmReset() {
   state.tasks.forEach(t => { t.done = false; });
-  state.weekXp = 0; state.catXp = {};
+  rehydrateXp(); // recalculate from tasks (all unchecked = zero)
   saveState(); closeResetModal(); renderAll();
   showToast('Week reset! Fresh slate 🌱');
+}
+
+// ─── EXPORT / IMPORT ─────────────────────────────────────────────────────────
+function exportData() {
+  const payload = JSON.stringify(state, null, 2);
+  const blob = new Blob([payload], { type: 'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href     = url;
+  a.download = `squish-plan-backup-${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup exported ⬇️');
+}
+
+let pendingImportData = null;
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      // basic validation
+      if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+        showToast('Invalid backup file — tasks missing'); return;
+      }
+      pendingImportData = parsed;
+      const taskCount = parsed.tasks.length;
+      const doneCount = parsed.tasks.filter(t => t.done).length;
+      document.getElementById('import-modal-msg').textContent =
+        `This backup has ${taskCount} tasks (${doneCount} completed) and ${parsed.totalXp || 0} XP. Importing will replace your current data.`;
+      document.getElementById('import-modal').classList.add('open');
+    } catch(err) {
+      showToast('Could not read file — is it a valid backup?');
+    }
+  };
+  reader.readAsText(file);
+  // reset input so same file can be re-selected
+  event.target.value = '';
+}
+
+function closeImportModal() {
+  pendingImportData = null;
+  document.getElementById('import-modal').classList.remove('open');
+}
+
+function confirmImport() {
+  if (!pendingImportData) return;
+  // merge in defaults for any missing fields
+  state = Object.assign({
+    tasks: [], cats: JSON.parse(JSON.stringify(DEFAULT_CATS)),
+    totalXp: 0, weekXp: 0, catXp: {}, nextId: 100, nextCatId: 1,
+    activeDay: 'all', activeCat: 'all',
+  }, pendingImportData);
+  if (!state.cats) state.cats = JSON.parse(JSON.stringify(DEFAULT_CATS));
+  rehydrateXp();
+  saveState();
+  closeImportModal();
+  renderAll();
+  showToast('Backup imported successfully ✓');
+}
+
+// ─── SAVED BADGE ─────────────────────────────────────────────────────────────
+function updateSavedBadge() {
+  const el = document.getElementById('saved-badge');
+  if (!el) return;
+  if (!state.lastSaved) { el.textContent = 'Not saved yet'; return; }
+  const d = new Date(state.lastSaved);
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const date = d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  el.textContent = `Saved ${date} at ${time}`;
 }
 
 // ─── TOAST ────────────────────────────────────────────────────────────────────
@@ -807,6 +920,7 @@ function switchPanel(name, btn) {
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
 function renderAll() {
+  _addRowUid = 0; // reset uid counter each render
   updateXpHeader();
   renderSidebarCats();
   renderToday();
@@ -816,6 +930,7 @@ function renderAll() {
 }
 
 renderAll();
+updateSavedBadge(); // show last saved time on load
 </script>
 </body>
 </html>
