@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Squish's Action Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg:        #0F1117;
+    --surface:   #181C26;
+    --surface2:  #1F2433;
+    --border:    #2A3045;
+    --border2:   #3A4260;
+    --text:      #E8EAF0;
+    --text2:     #8B93A8;
+    --text3:     #555E75;
+    --gold:      #D9924A;
+    --running:   #5BAD47;
+    --radius:    10px;
+    --radius-lg: 16px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; min-height: 100vh; }
+
+  /* LAYOUT */
+  .shell { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+  /* SIDEBAR */
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .logo { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 800; color: var(--text); letter-spacing: -0.02em; padding: 0 8px 16px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .logo span { color: var(--running); }
+  .nav-btn { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); border: none; background: transparent; color: var(--text2); font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer; width: 100%; text-align: left; transition: background 0.15s, color 0.15s; }
+  .nav-btn:hover { background: var(--surface2); color: var(--text); }
+  .nav-btn.active { background: var(--surface2); color: var(--text); font-weight: 500; }
+  .nav-btn .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sidebar-section-label { font-size: 11px; color: var(--text3); padding: 12px 12px 4px; text-transform: uppercase; letter-spacing: .06em; }
+  .sidebar-spacer { flex: 1; }
+  .reset-btn { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; border-radius: var(--radius); border: 1px solid #C4606040; background: #C4606012; color: #C46060; font-size: 13px; font-family: 'Inter', sans-serif; cursor: pointer; width: 100%; transition: background 0.15s; }
+  .reset-btn:hover { background: #C4606022; }
+
+  /* MAIN */
+  .main { padding: 28px 32px; overflow-y: auto; }
+
+  /* XP HEADER */
+  .xp-header { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 24px; display: grid; grid-template-columns: 1fr auto; gap: 16px; align-items: center; }
+  .level-name { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .xp-track { display: flex; align-items: center; gap: 12px; }
+  .xp-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .xp-bar-fill { height: 100%; background: linear-gradient(90deg, var(--running), #8BC34A); border-radius: 100px; transition: width 0.4s ease; }
+  .xp-text { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .xp-total { text-align: right; }
+  .xp-total-num { font-family: 'Syne', sans-serif; font-size: 32px; font-weight: 800; color: var(--gold); }
+  .xp-total-lbl { font-size: 12px; color: var(--text2); }
+
+  /* STATS */
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 24px; }
+  .stat { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-val { font-family: 'Syne', sans-serif; font-size: 26px; font-weight: 700; }
+  .stat-lbl { font-size: 11px; color: var(--text2); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* PANELS */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* DAY FILTER */
+  .day-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 20px; }
+  .day-pill { padding: 5px 14px; border-radius: 100px; border: 1px solid var(--border); background: transparent; color: var(--text2); font-size: 12px; font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.15s; }
+  .day-pill:hover { border-color: var(--border2); color: var(--text); }
+  .day-pill.active { background: var(--running); border-color: var(--running); color: #fff; font-weight: 500; }
+
+  /* DAY SECTION */
+  .day-section { margin-bottom: 20px; }
+  .day-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .day-head-label { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 700; }
+  .day-head-date { font-size: 12px; color: var(--text2); }
+  .day-head-note { font-size: 11px; color: var(--text2); background: var(--surface2); padding: 2px 8px; border-radius: 100px; }
+  .day-head-xp { font-size: 12px; color: var(--text2); margin-left: auto; }
+
+  /* CARD */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+
+  /* TASK ROW */
+  .task-row { display: flex; align-items: center; gap: 12px; padding: 11px 16px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .task-row:last-child { border-bottom: none; }
+  .task-row:hover { background: var(--surface2); }
+  .task-check { width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border2); background: transparent; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; font-size: 10px; color: transparent; }
+  .task-check.checked { background: var(--running); border-color: var(--running); color: white; }
+  .cat-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .task-label { flex: 1; font-size: 13.5px; color: var(--text); transition: color 0.15s; }
+  .task-label.done { text-decoration: line-through; color: var(--text3); }
+  .cat-badge { font-size: 11px; padding: 2px 9px; border-radius: 100px; white-space: nowrap; font-weight: 500; }
+  .task-xp-badge { font-size: 12px; color: var(--gold); font-weight: 600; white-space: nowrap; min-width: 52px; text-align: right; }
+  .del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+  .del-btn:hover { color: #C46060; background: #C4606015; }
+
+  /* ADD ROW */
+  .add-row { display: flex; gap: 8px; padding: 12px 16px; background: var(--surface2); border-top: 1px solid var(--border); flex-wrap: wrap; }
+  .add-input { flex: 1; min-width: 180px; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
+  .add-input:focus { border-color: var(--running); }
+  .add-input::placeholder { color: var(--text3); }
+  .add-select { background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 8px 10px; outline: none; cursor: pointer; }
+  .add-btn { background: var(--running); border: none; border-radius: var(--radius); color: white; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 8px 18px; cursor: pointer; transition: opacity 0.15s; }
+  .add-btn:hover { opacity: 0.85; }
+
+  /* CATEGORIES PANEL */
+  .cat-manager-row { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.1s; }
+  .cat-manager-row:last-child { border-bottom: none; }
+  .cat-manager-row:hover { background: var(--surface2); }
+  .cat-color-swatch { width: 24px; height: 24px; border-radius: 6px; flex-shrink: 0; cursor: pointer; border: 2px solid transparent; transition: border-color 0.15s; position: relative; overflow: hidden; }
+  .cat-color-swatch input[type=color] { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; cursor: pointer; border: none; padding: 0; }
+  .cat-name-display { flex: 1; font-size: 14px; }
+  .cat-xp-display { font-size: 12px; color: var(--text2); white-space: nowrap; }
+  .cat-edit-btn { background: none; border: 1px solid var(--border2); border-radius: 6px; color: var(--text2); font-size: 12px; padding: 4px 10px; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.15s; }
+  .cat-edit-btn:hover { background: var(--surface2); color: var(--text); }
+  .cat-del-btn { background: none; border: none; cursor: pointer; color: var(--text3); font-size: 16px; padding: 2px 4px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+  .cat-del-btn:hover { color: #C46060; background: #C4606015; }
+
+  /* inline edit form */
+  .cat-edit-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 16px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .cat-edit-input { background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 7px 10px; outline: none; flex: 1; min-width: 120px; }
+  .cat-edit-input:focus { border-color: var(--running); }
+  .cat-xp-input { width: 70px; background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 7px 10px; outline: none; }
+  .cat-xp-input:focus { border-color: var(--running); }
+  .cat-color-input { width: 44px; height: 34px; border-radius: var(--radius); border: 1px solid var(--border2); background: var(--bg); cursor: pointer; padding: 2px; }
+  .save-btn { background: var(--running); border: none; border-radius: var(--radius); color: white; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; padding: 7px 16px; cursor: pointer; }
+  .cancel-btn { background: none; border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); font-family: 'Inter', sans-serif; font-size: 13px; padding: 7px 12px; cursor: pointer; }
+  .cancel-btn:hover { background: var(--surface); }
+
+  /* add category row */
+  .add-cat-row { display: flex; gap: 8px; padding: 14px 16px; background: var(--surface2); border-top: 1px solid var(--border); flex-wrap: wrap; align-items: center; }
+  .add-cat-label { font-size: 12px; color: var(--text2); white-space: nowrap; }
+
+  /* used-in note */
+  .cat-used-note { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* PROGRESS */
+  .cat-bars { display: flex; flex-direction: column; gap: 12px; }
+  .cat-bar-row { display: flex; flex-direction: column; gap: 4px; }
+  .cat-bar-meta { display: flex; align-items: center; gap: 8px; }
+  .cat-bar-label { font-size: 13px; flex: 1; }
+  .cat-bar-xp { font-size: 12px; color: var(--text2); }
+  .cat-bar-bg { height: 6px; background: var(--border); border-radius: 100px; overflow: hidden; }
+  .cat-bar-fill { height: 100%; border-radius: 100px; transition: width 0.4s; }
+  .levels-list { display: flex; flex-direction: column; }
+  .level-row { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .level-row:last-child { border-bottom: none; }
+  .level-star { font-size: 16px; }
+  .level-row-name { flex: 1; font-size: 13.5px; }
+  .level-row-xp { font-size: 12px; color: var(--text2); }
+  .level-row.unlocked .level-row-name { color: var(--gold); font-weight: 500; }
+  .level-row:not(.unlocked) { opacity: 0.4; }
+
+  /* ADAPT */
+  .adapt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .adapt-btn { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 13px; padding: 16px; cursor: pointer; text-align: left; transition: background 0.15s, border-color 0.15s; line-height: 1.5; }
+  .adapt-btn:hover { background: var(--surface2); border-color: var(--border2); }
+  .adapt-icon { font-size: 20px; display: block; margin-bottom: 6px; }
+  .adapt-title { font-weight: 500; display: block; margin-bottom: 2px; }
+  .adapt-sub { font-size: 12px; color: var(--text2); }
+  .tip-card { border-left: 3px solid; border-radius: 0 var(--radius) var(--radius) 0; background: var(--surface); padding: 12px 16px; margin-bottom: 8px; }
+  .tip-title { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+  .tip-body { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity 0.2s; }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: var(--radius-lg); padding: 28px; max-width: 400px; width: 90%; transform: translateY(8px); transition: transform 0.2s; }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal h3 { font-family: 'Syne', sans-serif; font-size: 18px; margin-bottom: 8px; }
+  .modal p { color: var(--text2); font-size: 13.5px; line-height: 1.6; margin-bottom: 20px; }
+  .modal-btns { display: flex; gap: 10px; justify-content: flex-end; }
+  .modal-cancel { padding: 9px 18px; border-radius: var(--radius); border: 1px solid var(--border2); background: transparent; color: var(--text2); font-family: 'Inter', sans-serif; font-size: 13px; cursor: pointer; }
+  .modal-cancel:hover { background: var(--surface2); }
+  .modal-confirm { padding: 9px 18px; border-radius: var(--radius); border: none; background: #C46060; color: white; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
+  .modal-confirm:hover { opacity: 0.85; }
+
+  /* TOAST */
+  .toast { position: fixed; bottom: 28px; right: 28px; background: var(--surface2); border: 1px solid var(--border2); border-radius: var(--radius); padding: 12px 18px; font-size: 13px; color: var(--text); transform: translateY(12px); opacity: 0; transition: all 0.25s; z-index: 200; pointer-events: none; max-width: 300px; }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* MISC */
+  .section-label { font-size: 11px; font-weight: 600; color: var(--text2); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 10px; margin-top: 20px; }
+  .section-label:first-child { margin-top: 0; }
+  h2.panel-title { font-family: 'Syne', sans-serif; font-size: 20px; font-weight: 700; margin-bottom: 20px; }
+  .empty-state { padding: 28px 20px; text-align: center; color: var(--text3); font-size: 13px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">Squish<span>.</span>plan</div>
+    <button class="nav-btn active" id="nav-today" onclick="switchPanel('today', this)">
+      <span style="font-size:16px;">📋</span> Today
+    </button>
+    <button class="nav-btn" id="nav-tasks" onclick="switchPanel('tasks', this)">
+      <span class="dot" style="background:var(--text3)"></span> All Tasks
+    </button>
+    <div class="sidebar-section-label">Categories</div>
+    <div id="sidebar-cats"></div>
+    <div class="sidebar-section-label">Views</div>
+    <button class="nav-btn" id="nav-categories" onclick="switchPanel('categories', this)">
+      <span style="font-size:16px;">🏷️</span> Manage Categories
+    </button>
+    <button class="nav-btn" id="nav-adapt" onclick="switchPanel('adapt', this)">
+      <span style="font-size:16px;">🔄</span> Adapt
+    </button>
+    <button class="nav-btn" id="nav-progress" onclick="switchPanel('progress', this)">
+      <span style="font-size:16px;">📊</span> Progress
+    </button>
+    <div class="sidebar-spacer"></div>
+    <button class="reset-btn" onclick="openResetModal()">↺ Reset week</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- XP HEADER -->
+    <div class="xp-header">
+      <div>
+        <div class="level-name" id="level-name">Level 1 — Apprentice</div>
+        <div class="xp-track">
+          <div class="xp-bar-bg"><div class="xp-bar-fill" id="xp-fill" style="width:0%"></div></div>
+          <span class="xp-text" id="xp-text">0 / 200 XP to next level</span>
+        </div>
+      </div>
+      <div class="xp-total">
+        <div class="xp-total-num" id="total-xp">0</div>
+        <div class="xp-total-lbl">total XP</div>
+      </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="stats">
+      <div class="stat"><div class="stat-val" id="stat-done">0</div><div class="stat-lbl">Tasks done</div></div>
+      <div class="stat"><div class="stat-val" id="stat-pending">0</div><div class="stat-lbl">Still to do</div></div>
+      <div class="stat"><div class="stat-val" id="stat-pct">0%</div><div class="stat-lbl">Week complete</div></div>
+    </div>
+
+    <!-- TODAY -->
+    <div id="panel-today" class="panel active">
+      <h2 class="panel-title">Today</h2>
+      <div id="today-content"></div>
+    </div>
+
+    <!-- ALL TASKS -->
+    <div id="panel-tasks" class="panel">
+      <h2 class="panel-title">All Tasks</h2>
+      <div class="day-filter" id="day-filter-bar"></div>
+      <div id="tasks-content"></div>
+    </div>
+
+    <!-- CATEGORIES -->
+    <div id="panel-categories" class="panel">
+      <h2 class="panel-title">Manage Categories</h2>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:18px;line-height:1.6;">Add, rename, recolor, or remove categories. XP value controls how many points tasks in that category are worth. Deleting a category reassigns its tasks to "Other".</p>
+      <div class="card" id="cat-manager-list"></div>
+    </div>
+
+    <!-- ADAPT -->
+    <div id="panel-adapt" class="panel">
+      <h2 class="panel-title">Adapt</h2>
+      <div class="adapt-grid">
+        <button class="adapt-btn" onclick="showAdaptTip('run')"><span class="adapt-icon">🏃</span><span class="adapt-title">Missed a run</span><span class="adapt-sub">Reschedule without losing fitness</span></button>
+        <button class="adapt-btn" onclick="showAdaptTip('free')"><span class="adapt-icon">⏰</span><span class="adapt-title">Surprise free time</span><span class="adapt-sub">Use a bonus window well</span></button>
+        <button class="adapt-btn" onclick="showAdaptTip('low')"><span class="adapt-icon">🔋</span><span class="adapt-title">Low energy day</span><span class="adapt-sub">Lighter swaps that still earn XP</span></button>
+        <button class="adapt-btn" onclick="showAdaptTip('social')"><span class="adapt-icon">🎉</span><span class="adapt-title">Social event came up</span><span class="adapt-sub">Shift tasks, protect the weekend</span></button>
+        <button class="adapt-btn" onclick="showAdaptTip('mentor')"><span class="adapt-icon">📚</span><span class="adapt-title">Urgent mentor HW</span><span class="adapt-sub">Reprioritize everything around it</span></button>
+        <button class="adapt-btn" onclick="showAdaptTip('travel')"><span class="adapt-icon">✈️</span><span class="adapt-title">Traveling</span><span class="adapt-sub">On-the-go task swaps</span></button>
+      </div>
+      <div id="adapt-tip-area"></div>
+      <div class="section-label">Flexible recovery rules</div>
+      <div class="tip-card" style="border-color:#5BAD47"><div class="tip-title" style="color:#5BAD47">Running</div><div class="tip-body">Missed a session? Move it to the next rest day or swap easy/long runs. Never double up hard efforts back to back.</div></div>
+      <div class="tip-card" style="border-color:#4A90D9"><div class="tip-title" style="color:#4A90D9">Mentor HW</div><div class="tip-body">Keep a 48-hour buffer before deadlines. Use commute or lunch for lighter review tasks when evenings are packed.</div></div>
+      <div class="tip-card" style="border-color:#D9924A"><div class="tip-title" style="color:#D9924A">Creative time</div><div class="tip-body">Creative blocks are protected — schedule them like workouts. Even 20 mins of coloring counts and restores energy.</div></div>
+    </div>
+
+    <!-- PROGRESS -->
+    <div id="panel-progress" class="panel">
+      <h2 class="panel-title">Progress</h2>
+      <div class="section-label">XP by category</div>
+      <div class="card" style="padding:16px 20px;margin-bottom:20px;"><div class="cat-bars" id="cat-bars"></div></div>
+      <div class="section-label">Level ladder</div>
+      <div class="card"><div class="levels-list" id="levels-list"></div></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- RESET MODAL -->
+<div class="modal-overlay" id="reset-modal">
+  <div class="modal">
+    <h3>Reset the week?</h3>
+    <p>This will uncheck all tasks and reset weekly XP. Your total XP and level are preserved.</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeResetModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmReset()">Yes, reset week</button>
+    </div>
+  </div>
+</div>
+
+<!-- DELETE CAT MODAL -->
+<div class="modal-overlay" id="del-cat-modal">
+  <div class="modal">
+    <h3>Delete category?</h3>
+    <p id="del-cat-msg">Tasks in this category will be moved to "Other".</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeDelCatModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmDeleteCat()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── DEFAULT CATS ─────────────────────────────────────────────────────────────
+const DEFAULT_CATS = {
+  mentor:   { label: 'Mentor HW',   color: '#4A90D9', xp: 30 },
+  running:  { label: 'Running',     color: '#5BAD47', xp: 25 },
+  reading:  { label: 'Reading',     color: '#C4607A', xp: 15 },
+  creative: { label: 'Creative',    color: '#D9924A', xp: 20 },
+  language: { label: 'Language',    color: '#8A6FD9', xp: 20 },
+  social:   { label: 'Social',      color: '#3DB89A', xp: 15 },
+  work:     { label: 'Work/Study',  color: '#D9C44A', xp: 25 },
+  other:    { label: 'Other',       color: '#7A8099', xp: 10 },
+};
+
+const LEVELS = [
+  { name: 'Apprentice',  xp: 0    },
+  { name: 'Consistent',  xp: 200  },
+  { name: 'Momentum',    xp: 500  },
+  { name: 'In the Zone', xp: 1000 },
+  { name: 'Unstoppable', xp: 2000 },
+  { name: 'Legend',      xp: 4000 },
+];
+
+const DAYS_META = [
+  { label: 'Sunday',    note: 'Rest + setup' },
+  { label: 'Monday',    note: 'Week 1 begins' },
+  { label: 'Tuesday',   note: 'Recovery + study' },
+  { label: 'Wednesday', note: 'Interval day' },
+  { label: 'Thursday',  note: 'Light day' },
+  { label: 'Friday',    note: 'Long run day' },
+  { label: 'Saturday',  note: 'Rest + restore' },
+  { label: 'Sunday',    note: 'Weekly reset' },
+];
+
+const ADAPT_TIPS = {
+  run:    { icon:'🏃', title:'Missed a run',       body:'Move the session to your next rest day. Swap easy and long runs if needed but never stack two hard efforts. One missed run will not affect your October race — consistency over perfection.' },
+  free:   { icon:'⏰', title:'Surprise free time', body:'Rank your incomplete tasks by category XP. Tackle mentor HW (30 XP) or running prep first, then language or creative. Even 25 minutes of focused work moves the needle.' },
+  low:    { icon:'🔋', title:'Low energy day',     body:'Swap any run for a walk. Do language textbook or reading instead of intervals. Protect creative time — scrapbooking and coloring are restorative, not draining. Skip nothing; just go lighter.' },
+  social: { icon:'🎉', title:'Social event',       body:'Social time is ON the plan — tick it off (15 XP). Move any displaced study sessions to the next morning or lunch. Protect the long run by not moving it later than Saturday.' },
+  mentor: { icon:'📚', title:'Urgent mentor HW',   body:'Mentor HW gets the first evening block every day this week. Drop language to 10 min minimum. Shift creative to the weekend. Keep the runs — they help you think.' },
+  travel: { icon:'✈️', title:'Traveling',          body:'Replace structured runs with hotel treadmill or outdoor easy runs. Language podcasts work on planes and trains. Bring a small notebook for scrapbooking journaling. Mentor HW can travel in a doc on your phone.' },
+};
+
+const DEFAULT_TASKS = [
+  { id:1,  day:0, text:"Review mentor HW — read assignment and make a plan",                   cat:'mentor',   xp:30, done:false },
+  { id:2,  day:0, text:"Read 20–30 pages",                                                     cat:'reading',  xp:15, done:false },
+  { id:3,  day:0, text:"Language — 15 min textbook, podcast, or reading",                      cat:'language', xp:20, done:false },
+  { id:4,  day:0, text:"20 min scrapbooking or coloring",                                      cat:'creative', xp:20, done:false },
+  { id:5,  day:0, text:"Text someone for weekend plans",                                       cat:'social',   xp:15, done:false },
+  { id:6,  day:0, text:"Lay out Week 1 training gear / plan tomorrow's run",                   cat:'running',  xp:10, done:false },
+  { id:7,  day:1, text:"Easy run — 3 miles @ conversational pace (~9:00–9:30/mi)",             cat:'running',  xp:25, done:false },
+  { id:8,  day:1, text:"15 min core/bodyweight (planks, glute bridges, dead bugs)",            cat:'running',  xp:15, done:false },
+  { id:9,  day:1, text:"Mentor HW — 30 min focused work session",                             cat:'mentor',   xp:30, done:false },
+  { id:10, day:1, text:"Language — 15 min textbook, podcast, or reading",                     cat:'language', xp:20, done:false },
+  { id:11, day:1, text:"Attend DSA meeting",                                                   cat:'work',     xp:20, done:false },
+  { id:12, day:1, text:"Study for Epic certification",                                         cat:'work',     xp:25, done:false },
+  { id:13, day:2, text:"Read 25–30 pages",                                                     cat:'reading',  xp:15, done:false },
+  { id:14, day:2, text:"Mentor HW — 30 min session",                                          cat:'mentor',   xp:30, done:false },
+  { id:15, day:2, text:"20 min scrapbooking or coloring (protected creative block)",           cat:'creative', xp:20, done:false },
+  { id:16, day:3, text:"Interval run — 6 × 400m @ 5K effort (~7:00/mi), 90 sec rest jog",    cat:'running',  xp:25, done:false },
+  { id:17, day:3, text:"Language — 15 min textbook, podcast, or reading",                     cat:'language', xp:20, done:false },
+  { id:18, day:3, text:"Mentor HW — 30 min session",                                          cat:'mentor',   xp:30, done:false },
+  { id:19, day:4, text:"Read 25–30 pages",                                                     cat:'reading',  xp:15, done:false },
+  { id:20, day:4, text:"Language — 15 min review (podcast or vocab)",                         cat:'language', xp:20, done:false },
+  { id:21, day:4, text:"Creative time — coloring or scrapbooking 20–30 min",                  cat:'creative', xp:20, done:false },
+  { id:22, day:4, text:"Plan weekend social activity or reach out to friends",                 cat:'social',   xp:15, done:false },
+  { id:23, day:5, text:"Long run — 5 miles @ easy pace (~9:00–9:30/mi)",                      cat:'running',  xp:25, done:false },
+  { id:24, day:5, text:"Mentor HW — review week's work, wrap up loose ends",                  cat:'mentor',   xp:30, done:false },
+  { id:25, day:5, text:"Social time / enjoy the holiday 🎆",                                   cat:'social',   xp:15, done:false },
+  { id:26, day:6, text:"Read 25–30 pages",                                                     cat:'reading',  xp:15, done:false },
+  { id:27, day:6, text:"Extended creative session — scrapbooking or coloring (45 min)",       cat:'creative', xp:20, done:false },
+  { id:28, day:6, text:"Language — 15 min textbook + 10 min review",                          cat:'language', xp:20, done:false },
+  { id:29, day:7, text:"Weekly review — what got done, what to carry forward",                cat:'other',    xp:10, done:false },
+  { id:30, day:7, text:"Plan Week 2 tasks",                                                    cat:'other',    xp:10, done:false },
+  { id:31, day:7, text:"Light walk or stretching (optional)",                                  cat:'running',  xp:10, done:false },
+];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+function loadState() {
+  try {
+    const s = localStorage.getItem('squish_state_v2');
+    if (s) return JSON.parse(s);
+  } catch(e) {}
+  return {
+    tasks:     JSON.parse(JSON.stringify(DEFAULT_TASKS)),
+    cats:      JSON.parse(JSON.stringify(DEFAULT_CATS)),
+    totalXp:   0,
+    weekXp:    0,
+    catXp:     {},
+    nextId:    100,
+    nextCatId: 1,
+    activeDay: 'all',
+    activeCat: 'all',
+  };
+}
+function saveState() { localStorage.setItem('squish_state_v2', JSON.stringify(state)); }
+let state = loadState();
+// ensure cats exists for old saves
+if (!state.cats) state.cats = JSON.parse(JSON.stringify(DEFAULT_CATS));
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function getCat(key) { return state.cats[key] || state.cats['other'] || { label: key, color: '#7A8099', xp: 10 }; }
+
+function getLevelInfo(xp) {
+  let lvl = 0;
+  for (let i = 0; i < LEVELS.length; i++) { if (xp >= LEVELS[i].xp) lvl = i; }
+  const cur = LEVELS[lvl], next = LEVELS[lvl + 1];
+  const base = cur.xp, cap = next ? next.xp : cur.xp;
+  const pct = next ? Math.min(100, Math.round(((xp - base) / (cap - base)) * 100)) : 100;
+  return { lvl: lvl + 1, name: cur.name, pct, earned: xp - base, needed: next ? cap - base : 0, next };
+}
+
+// ─── SIDEBAR CATS ─────────────────────────────────────────────────────────────
+function renderSidebarCats() {
+  const wrap = document.getElementById('sidebar-cats');
+  wrap.innerHTML = '';
+  Object.entries(state.cats).forEach(([key, cat]) => {
+    const btn = document.createElement('button');
+    btn.className = 'nav-btn';
+    btn.innerHTML = `<span class="dot" style="background:${cat.color}"></span> ${cat.label}`;
+    btn.onclick = () => {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      switchPanel('tasks', btn);
+      filterCat(key);
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+// ─── XP HEADER ────────────────────────────────────────────────────────────────
+function updateXpHeader() {
+  const xp = state.totalXp;
+  const info = getLevelInfo(xp);
+  document.getElementById('level-name').textContent = `Level ${info.lvl} — ${info.name}`;
+  document.getElementById('xp-fill').style.width = info.pct + '%';
+  document.getElementById('xp-text').textContent = info.next ? `${info.earned} / ${info.needed} XP to next level` : 'MAX LEVEL';
+  document.getElementById('total-xp').textContent = xp;
+  const done = state.tasks.filter(t => t.done).length;
+  const total = state.tasks.length;
+  document.getElementById('stat-done').textContent = done;
+  document.getElementById('stat-pending').textContent = total - done;
+  document.getElementById('stat-pct').textContent = total ? Math.round((done/total)*100)+'%' : '0%';
+}
+
+// ─── TASK ROW ────────────────────────────────────────────────────────────────
+function renderTaskRow(t) {
+  const cat = getCat(t.cat);
+  const div = document.createElement('div');
+  div.className = 'task-row';
+  div.innerHTML = `
+    <div class="task-check ${t.done ? 'checked' : ''}" onclick="toggleTask(${t.id})" title="${t.done ? 'Mark incomplete' : 'Mark complete'}">
+      ${t.done ? '✓' : ''}
+    </div>
+    <span class="cat-dot" style="background:${cat.color}"></span>
+    <span class="task-label ${t.done ? 'done' : ''}" id="tl-${t.id}">${t.text}</span>
+    <span class="cat-badge" style="background:${cat.color}22;color:${cat.color};">${cat.label}</span>
+    <span class="task-xp-badge">+${t.xp} XP</span>
+    <button class="del-btn" onclick="deleteTask(${t.id})" title="Remove task">✕</button>
+  `;
+  return div;
+}
+
+// ─── ADD ROW ─────────────────────────────────────────────────────────────────
+function renderAddRow(dayIndex) {
+  const div = document.createElement('div');
+  div.className = 'add-row';
+  const catOptions = Object.entries(state.cats).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
+  div.innerHTML = `
+    <input class="add-input" type="text" placeholder="Add a task…" id="add-input-${dayIndex}" onkeydown="if(event.key==='Enter')addTask(${dayIndex})" />
+    <select class="add-select" id="add-cat-${dayIndex}">${catOptions}</select>
+    <button class="add-btn" onclick="addTask(${dayIndex})">+ Add</button>
+  `;
+  return div;
+}
+
+// ─── DAY SECTION ─────────────────────────────────────────────────────────────
+function renderDaySection(dayIndex, tasks) {
+  const meta = DAYS_META[dayIndex];
+  const dayXp = tasks.reduce((s,t) => s + t.xp, 0);
+  const earnedXp = tasks.filter(t=>t.done).reduce((s,t) => s + t.xp, 0);
+  const wrap = document.createElement('div');
+  wrap.className = 'day-section';
+  const head = document.createElement('div');
+  head.className = 'day-head';
+  head.innerHTML = `
+    <span class="day-head-label">${meta.label}</span>
+    <span class="day-head-note">${meta.note}</span>
+    <span class="day-head-xp">${earnedXp} / ${dayXp} XP</span>
+  `;
+  const card = document.createElement('div');
+  card.className = 'card';
+  if (!tasks.length) {
+    card.innerHTML = '<div class="empty-state">No tasks yet. Add one below!</div>';
+  } else {
+    tasks.forEach(t => card.appendChild(renderTaskRow(t)));
+  }
+  card.appendChild(renderAddRow(dayIndex));
+  wrap.appendChild(head);
+  wrap.appendChild(card);
+  return wrap;
+}
+
+// ─── TODAY ────────────────────────────────────────────────────────────────────
+function renderToday() {
+  const area = document.getElementById('today-content');
+  area.innerHTML = '';
+  // Map JS getDay() (0=Sun) to DAYS_META index (0=Sun … 6=Sat, 7=Sun again → clamp to 0–7)
+  const dowMap = [0, 1, 2, 3, 4, 5, 6]; // Sun=0 … Sat=6; second Sunday maps to 0
+  let dayIndex = new Date().getDay(); // 0–6
+  if (dayIndex > 7) dayIndex = 0;
+  area.appendChild(renderDaySection(dayIndex, state.tasks.filter(t => t.day === dayIndex)));
+}
+
+// ─── ALL TASKS ────────────────────────────────────────────────────────────────
+function renderAllTasks() {
+  const bar = document.getElementById('day-filter-bar');
+  bar.innerHTML = '';
+  const allBtn = document.createElement('button');
+  allBtn.className = 'day-pill ' + (state.activeDay === 'all' ? 'active' : '');
+  allBtn.textContent = 'All days';
+  allBtn.onclick = () => { state.activeDay = 'all'; saveState(); renderAllTasks(); };
+  bar.appendChild(allBtn);
+  DAYS_META.forEach((d, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'day-pill ' + (state.activeDay === i ? 'active' : '');
+    btn.textContent = d.label;
+    btn.onclick = () => { state.activeDay = i; saveState(); renderAllTasks(); };
+    bar.appendChild(btn);
+  });
+  const area = document.getElementById('tasks-content');
+  area.innerHTML = '';
+  const daysToShow = state.activeDay === 'all' ? DAYS_META.map((_,i) => i) : [state.activeDay];
+  daysToShow.forEach(di => {
+    let tasks = state.tasks.filter(t => t.day === di);
+    if (state.activeCat !== 'all') tasks = tasks.filter(t => t.cat === state.activeCat);
+    area.appendChild(renderDaySection(di, tasks));
+  });
+}
+
+// ─── CATEGORIES MANAGER ───────────────────────────────────────────────────────
+let editingCat = null; // key being edited
+
+function renderCatManager() {
+  const wrap = document.getElementById('cat-manager-list');
+  wrap.innerHTML = '';
+
+  Object.entries(state.cats).forEach(([key, cat]) => {
+    const usedCount = state.tasks.filter(t => t.cat === key).length;
+
+    if (editingCat === key) {
+      // inline edit form
+      const form = document.createElement('div');
+      form.className = 'cat-edit-form';
+      form.innerHTML = `
+        <input class="cat-edit-input" id="edit-name-${key}" value="${cat.label}" placeholder="Category name" />
+        <input type="color" class="cat-color-input" id="edit-color-${key}" value="${cat.color}" title="Pick color" />
+        <input class="cat-xp-input" type="number" id="edit-xp-${key}" value="${cat.xp}" min="1" max="100" placeholder="XP" />
+        <button class="save-btn" onclick="saveCatEdit('${key}')">Save</button>
+        <button class="cancel-btn" onclick="cancelCatEdit()">Cancel</button>
+      `;
+      wrap.appendChild(form);
+    } else {
+      const row = document.createElement('div');
+      row.className = 'cat-manager-row';
+      const isProtected = key === 'other';
+      row.innerHTML = `
+        <span class="cat-dot" style="background:${cat.color};width:14px;height:14px;border-radius:4px;flex-shrink:0;"></span>
+        <div style="flex:1;">
+          <div class="cat-name-display">${cat.label}</div>
+          <div class="cat-used-note">${usedCount} task${usedCount !== 1 ? 's' : ''} · ${cat.xp} XP each</div>
+        </div>
+        <button class="cat-edit-btn" onclick="startCatEdit('${key}')">Edit</button>
+        ${isProtected
+          ? `<button class="cat-del-btn" disabled title="'Other' is a fallback and cannot be deleted" style="opacity:0.3;cursor:not-allowed;">✕</button>`
+          : `<button class="cat-del-btn" onclick="openDelCatModal('${key}')" title="Delete category">✕</button>`
+        }
+      `;
+      wrap.appendChild(row);
+    }
+  });
+
+  // add new category row
+  const addRow = document.createElement('div');
+  addRow.className = 'add-cat-row';
+  addRow.innerHTML = `
+    <span class="add-cat-label">New category:</span>
+    <input class="cat-edit-input" id="new-cat-name" placeholder="Name" style="flex:1;min-width:100px;" onkeydown="if(event.key==='Enter')addCategory()" />
+    <input type="color" class="cat-color-input" id="new-cat-color" value="#5B8DD9" title="Pick color" />
+    <input class="cat-xp-input" type="number" id="new-cat-xp" value="15" min="1" max="100" placeholder="XP" />
+    <button class="add-btn" onclick="addCategory()">+ Add</button>
+  `;
+  wrap.appendChild(addRow);
+}
+
+function startCatEdit(key) {
+  editingCat = key;
+  renderCatManager();
+  setTimeout(() => {
+    const el = document.getElementById(`edit-name-${key}`);
+    if (el) { el.focus(); el.select(); }
+  }, 50);
+}
+
+function cancelCatEdit() {
+  editingCat = null;
+  renderCatManager();
+}
+
+function saveCatEdit(key) {
+  const name  = document.getElementById(`edit-name-${key}`)?.value.trim();
+  const color = document.getElementById(`edit-color-${key}`)?.value;
+  const xp    = parseInt(document.getElementById(`edit-xp-${key}`)?.value) || 10;
+  if (!name) { showToast('Name cannot be empty'); return; }
+  state.cats[key].label = name;
+  state.cats[key].color = color;
+  state.cats[key].xp    = xp;
+  // update xp on all tasks in this category that have the old default xp
+  state.tasks.forEach(t => { if (t.cat === key) t.xp = xp; });
+  editingCat = null;
+  saveState();
+  renderAll();
+  showToast(`"${name}" updated ✓`);
+}
+
+function addCategory() {
+  const name  = document.getElementById('new-cat-name')?.value.trim();
+  const color = document.getElementById('new-cat-color')?.value || '#5B8DD9';
+  const xp    = parseInt(document.getElementById('new-cat-xp')?.value) || 15;
+  if (!name) { showToast('Enter a category name'); return; }
+  // make a slug key from name
+  const key = name.toLowerCase().replace(/[^a-z0-9]/g, '_') + '_' + (state.nextCatId++);
+  state.cats[key] = { label: name, color, xp };
+  saveState();
+  renderAll();
+  showToast(`"${name}" added!`);
+}
+
+// ─── DELETE CATEGORY ─────────────────────────────────────────────────────────
+let pendingDelCat = null;
+
+function openDelCatModal(key) {
+  pendingDelCat = key;
+  const cat = getCat(key);
+  const count = state.tasks.filter(t => t.cat === key).length;
+  document.getElementById('del-cat-msg').textContent =
+    count > 0
+      ? `"${cat.label}" has ${count} task${count !== 1 ? 's' : ''}. They will be reassigned to "Other".`
+      : `Delete "${cat.label}"? This cannot be undone.`;
+  document.getElementById('del-cat-modal').classList.add('open');
+}
+
+function closeDelCatModal() {
+  pendingDelCat = null;
+  document.getElementById('del-cat-modal').classList.remove('open');
+}
+
+function confirmDeleteCat() {
+  if (!pendingDelCat) return;
+  const key = pendingDelCat;
+  const otherXp = state.cats['other']?.xp || 10;
+  // reassign tasks
+  state.tasks.forEach(t => {
+    if (t.cat === key) { t.cat = 'other'; t.xp = otherXp; }
+  });
+  // remove catXp entry
+  delete state.catXp[key];
+  delete state.cats[key];
+  pendingDelCat = null;
+  saveState();
+  closeDelCatModal();
+  renderAll();
+  showToast('Category deleted');
+}
+
+// ─── PROGRESS ─────────────────────────────────────────────────────────────────
+function renderProgress() {
+  const catBars = document.getElementById('cat-bars');
+  catBars.innerHTML = '';
+  const maxXp = Math.max(...Object.keys(state.cats).map(k => state.catXp[k] || 0), 1);
+  Object.entries(state.cats).forEach(([key, cat]) => {
+    const xp = state.catXp[key] || 0;
+    const pct = Math.round((xp / maxXp) * 100);
+    catBars.innerHTML += `
+      <div class="cat-bar-row">
+        <div class="cat-bar-meta">
+          <span class="cat-dot" style="background:${cat.color}"></span>
+          <span class="cat-bar-label">${cat.label}</span>
+          <span class="cat-bar-xp">${xp} XP</span>
+        </div>
+        <div class="cat-bar-bg"><div class="cat-bar-fill" style="width:${pct}%;background:${cat.color};"></div></div>
+      </div>`;
+  });
+  const levelsList = document.getElementById('levels-list');
+  levelsList.innerHTML = LEVELS.map((l, i) => {
+    const unlocked = state.totalXp >= l.xp;
+    return `<div class="level-row ${unlocked ? 'unlocked' : ''}">
+      <span class="level-star">${unlocked ? '⭐' : '☆'}</span>
+      <span class="level-row-name">Level ${i+1} — ${l.name}</span>
+      <span class="level-row-xp">${l.xp} XP</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── TASK ACTIONS ─────────────────────────────────────────────────────────────
+function toggleTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (!t) return;
+  t.done = !t.done;
+  const delta = t.xp;
+  const catLabel = getCat(t.cat).label;
+  if (t.done) {
+    state.totalXp += delta; state.weekXp += delta;
+    state.catXp[t.cat] = (state.catXp[t.cat] || 0) + delta;
+    showToast(`+${delta} XP — ${catLabel} ✓`);
+  } else {
+    state.totalXp = Math.max(0, state.totalXp - delta);
+    state.weekXp  = Math.max(0, state.weekXp  - delta);
+    state.catXp[t.cat] = Math.max(0, (state.catXp[t.cat] || 0) - delta);
+  }
+  saveState(); renderAll();
+}
+
+function addTask(dayIndex) {
+  const input  = document.getElementById(`add-input-${dayIndex}`);
+  const catSel = document.getElementById(`add-cat-${dayIndex}`);
+  const text   = input.value.trim();
+  if (!text) return;
+  const cat = catSel.value;
+  const xp  = state.cats[cat]?.xp || 10;
+  state.tasks.push({ id: state.nextId++, day: dayIndex, text, cat, xp, done: false });
+  saveState(); renderAll();
+  showToast('Task added!');
+}
+
+function deleteTask(id) {
+  const t = state.tasks.find(x => x.id === id);
+  if (t && t.done) {
+    state.totalXp = Math.max(0, state.totalXp - t.xp);
+    state.weekXp  = Math.max(0, state.weekXp  - t.xp);
+    state.catXp[t.cat] = Math.max(0, (state.catXp[t.cat] || 0) - t.xp);
+  }
+  state.tasks = state.tasks.filter(x => x.id !== id);
+  saveState(); renderAll();
+}
+
+function filterCat(cat) { state.activeCat = cat; saveState(); renderAllTasks(); }
+
+// ─── ADAPT ────────────────────────────────────────────────────────────────────
+function showAdaptTip(key) {
+  const tip = ADAPT_TIPS[key];
+  document.getElementById('adapt-tip-area').innerHTML = `
+    <div class="tip-card" style="border-color:#5BAD47;margin-bottom:16px;">
+      <div class="tip-title" style="color:#5BAD47;font-size:14px;">${tip.icon} ${tip.title}</div>
+      <div class="tip-body" style="margin-top:6px;line-height:1.7;">${tip.body}</div>
+    </div>`;
+}
+
+// ─── RESET ────────────────────────────────────────────────────────────────────
+function openResetModal()  { document.getElementById('reset-modal').classList.add('open'); }
+function closeResetModal() { document.getElementById('reset-modal').classList.remove('open'); }
+function confirmReset() {
+  state.tasks.forEach(t => { t.done = false; });
+  state.weekXp = 0; state.catXp = {};
+  saveState(); closeResetModal(); renderAll();
+  showToast('Week reset! Fresh slate 🌱');
+}
+
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+// ─── PANEL SWITCH ─────────────────────────────────────────────────────────────
+function switchPanel(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (name === 'tasks')      { state.activeCat = 'all'; renderAllTasks(); }
+  if (name === 'progress')   renderProgress();
+  if (name === 'categories') { editingCat = null; renderCatManager(); }
+}
+
+// ─── RENDER ALL ───────────────────────────────────────────────────────────────
+function renderAll() {
+  updateXpHeader();
+  renderSidebarCats();
+  renderToday();
+  if (document.getElementById('panel-tasks').classList.contains('active'))      renderAllTasks();
+  if (document.getElementById('panel-progress').classList.contains('active'))   renderProgress();
+  if (document.getElementById('panel-categories').classList.contains('active')) renderCatManager();
+}
+
+renderAll();
+</script>
+</body>
+</html>
