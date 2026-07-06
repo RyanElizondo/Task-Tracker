@@ -517,9 +517,9 @@ function renderTaskRow(t) {
 }
 
 // ─── ADD ROW ─────────────────────────────────────────────────────────────────
-let _addRowUid = 0;
-function renderAddRow(dayIndex) {
-  const uid = _addRowUid++; // unique per render so duplicate days never share DOM ids
+function renderAddRow(dayIndex, prefix) {
+  // prefix makes ids unique per panel so Today + Tasks panels never collide
+  const uid = prefix + '_' + dayIndex;
   const div = document.createElement('div');
   div.className = 'add-row';
   const catOptions = Object.entries(state.cats).map(([k,v]) => `<option value="${k}">${v.label}</option>`).join('');
@@ -532,7 +532,7 @@ function renderAddRow(dayIndex) {
 }
 
 // ─── DAY SECTION ─────────────────────────────────────────────────────────────
-function renderDaySection(dayIndex, tasks) {
+function renderDaySection(dayIndex, tasks, prefix) {
   const meta = DAYS_META[dayIndex];
   const dayXp = tasks.reduce((s,t) => s + t.xp, 0);
   const earnedXp = tasks.filter(t=>t.done).reduce((s,t) => s + t.xp, 0);
@@ -552,7 +552,7 @@ function renderDaySection(dayIndex, tasks) {
   } else {
     tasks.forEach(t => card.appendChild(renderTaskRow(t)));
   }
-  card.appendChild(renderAddRow(dayIndex));
+  card.appendChild(renderAddRow(dayIndex, prefix || 'd'));
   wrap.appendChild(head);
   wrap.appendChild(card);
   return wrap;
@@ -566,7 +566,7 @@ function renderToday() {
   const dowMap = [0, 1, 2, 3, 4, 5, 6]; // Sun=0 … Sat=6; second Sunday maps to 0
   let dayIndex = new Date().getDay(); // 0–6
   if (dayIndex > 7) dayIndex = 0;
-  area.appendChild(renderDaySection(dayIndex, state.tasks.filter(t => t.day === dayIndex)));
+  area.appendChild(renderDaySection(dayIndex, state.tasks.filter(t => t.day === dayIndex), 'today'));
 }
 
 // ─── ALL TASKS ────────────────────────────────────────────────────────────────
@@ -591,7 +591,7 @@ function renderAllTasks() {
   daysToShow.forEach(di => {
     let tasks = state.tasks.filter(t => t.day === di);
     if (state.activeCat !== 'all') tasks = tasks.filter(t => t.cat === state.activeCat);
-    area.appendChild(renderDaySection(di, tasks));
+    area.appendChild(renderDaySection(di, tasks, 'tasks'));
   });
 }
 
@@ -781,12 +781,15 @@ function toggleTask(id) {
 function addTask(dayIndex, uid) {
   const input  = document.getElementById(`add-input-${uid}`);
   const catSel = document.getElementById(`add-cat-${uid}`);
-  const text   = input.value.trim();
+  if (!input || !catSel) return;
+  const text = input.value.trim();
   if (!text) return;
+  // read values before renderAll() tears down the DOM
   const cat = catSel.value;
   const xp  = state.cats[cat]?.xp || 10;
   state.tasks.push({ id: state.nextId++, day: dayIndex, text, cat, xp, done: false });
-  saveState(); renderAll();
+  saveState();
+  renderAll(); // rebuilds DOM — do not touch input/catSel after this line
   showToast('Task added!');
 }
 
@@ -920,7 +923,6 @@ function switchPanel(name, btn) {
 
 // ─── RENDER ALL ───────────────────────────────────────────────────────────────
 function renderAll() {
-  _addRowUid = 0; // reset uid counter each render
   updateXpHeader();
   renderSidebarCats();
   renderToday();
